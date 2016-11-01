@@ -1,0 +1,12 @@
+{
+    "google": {
+        "clientId": null,
+        "clientSecret": null
+    },
+    "mysql": {
+        "host": null,
+        "user": null,
+        "password": null,
+        "database": null
+    }
+}

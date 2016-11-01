@@ -35,3 +35,13 @@ jspm_packages
 
 # Optional REPL history
 .node_repl_history
+
+#my in folder shell scripts
+mysql
+schema.sql
+startDatabase.sh
+exampleDGISession.json
+
+#vscode configs
+.vscode
+
