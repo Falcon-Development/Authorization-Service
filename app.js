@@ -101,18 +101,20 @@ app.get('/api/patients', passport.authenticate("google-token"), function (req, r
 
 app.get('/api/sessions', passport.authenticate("google-token"), function (req, res) {
 	//if user id does not equal the requests patient id
-	if (req.user.id !== req.params.userId) {
-		users.userIsPatientOf(config.mssql, req.params.userId, req.user.id).then(isPatient => {
+	if (req.user.id !== req.query.user_id) {
+		users.userIsPatientOf(config.mysql, req.query.user_id, req.user.id).then(isPatient => {
 			if (!isPatient) {
 				res.status(401).json({
 					message: "This user is not assigned to you"
 				})
 			} else {
-				user.getSessions(config.mssql.req.params.userId).then(sessions => res.json(session))
+				users.getSessions(config.mysql, req.query.user_id).then(sessions => {
+					res.json(sessions)
+				})
 			}
 		})
 	} else {
-		user.getSessions(config.mssql.req.params.userId).then(sessions => res.json(session))
+		users.getSessions(config.mysql, req.query.user_id).then(sessions => res.json(session))
 	}
 	//  check to be sure user is that patients therapist and if not return 401
 	//
@@ -121,18 +123,20 @@ app.get('/api/sessions', passport.authenticate("google-token"), function (req, r
 
 app.get('/api/sessions/data', passport.authenticate("google-token"), function (req, res) {
 	//if user id does not equal the requests patient id
-	if (req.user.id !== req.params.userId) {
-		users.userIsPatientOf(config.mssql, req.params.userId, req.user.id).then(isPatient => {
+	if (req.user.id !== req.query.user_id) {
+		users.userIsPatientOf(config.mysql, req.query.user_id, req.user.id).then(isPatient => {
 			if (!isPatient) {
 				res.status(401).json({
 					message: "This user is not assigned to you"
 				})
 			} else {
-				user.getSession(config.mssql, req.params.userId, req.params.date).then(session => {
+				users.getSession(config.mysql, req.query.user_id, new Date(req.query.date)).then(session => {
 					if (session) {
-						req.json(session)
+						session.data = JSON.parse(session.jsonData);
+						delete session.jsonData;
+						res.json(session)
 					} else {
-						req.status(401).json({
+						res.status(401).json({
 							message: "No session found"
 						})
 					}
@@ -140,7 +144,7 @@ app.get('/api/sessions/data', passport.authenticate("google-token"), function (r
 			}
 		})
 	} else {
-		user.getSession(config.mssql, req.params.userId, req.params.date).then(session => {
+		users.getSession(config.mysql, req.query.user_id, new Date(req.query.date)).then(session => {
 			if (session) {
 				req.json(session)
 			} else {

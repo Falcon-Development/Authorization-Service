@@ -15,14 +15,14 @@ const getPatients = Promise.coroutine(function* (db, id) {
 
 const getSessions = Promise.coroutine(function* (db, id) {
     const connection =  yield mysql.createConnection(db)
-    const rows = yield connection.query('select * from Sessions where Sessions.patient = ? ORDER BY Sessions.date DESC', [id]).catch(console.error);
+    const rows = yield connection.query('select patient, type, acquisitionDate from SessionData where SessionData.patient = ? ORDER BY SessionData.acquisitionDate DESC', [id]).catch(console.error);
     yield connection.end();
     return rows || [];
 })
 
 const getSession = Promise.coroutine(function* (db, id, date) {
     const connection =  yield mysql.createConnection(db)
-    const rows = yield connection.query('select * from Sessions where Sessions.patient = ? and date = ?', [id, date]).catch(console.error);
+    const rows = yield connection.query('select * from SessionData where SessionData.patient = ? and SessionData.acquisitionDate = ?', [id, date]).catch(console.error);
     yield connection.end();
     if (rows) {
         return rows[0]
@@ -61,9 +61,11 @@ const userIsPatientOf = Promise.coroutine(function*(db, userID, therapistID) {
     const found = yield connection.query("select * from TherapistPatientLink where TherapistPatientLink.therapist = ? and TherapistPatientLink.patient = ?", [therapistID, userID]).catch(err => {
         console.error(err)
         return false 
-    }).then(rows => boolean(rows));
+    }).then(rows => {
+        if (rows) { return true; } else {return false;}
+    });
     yield connection.end();
-    return inserted;
+    return found;
 });
 
-module.exports = { getUserById, insertUser, userIsPatientOf, getSessions }
+module.exports = { getUserById, insertUser, userIsPatientOf, getSessions, getSession }

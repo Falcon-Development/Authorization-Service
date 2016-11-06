@@ -45,3 +45,4 @@ exampleDGISession.json
 #vscode configs
 .vscode
 
+loadData.sql
