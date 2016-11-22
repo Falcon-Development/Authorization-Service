@@ -14,7 +14,7 @@ const GoogleOAuth2Strategy = require('passport-google-auth').Strategy;
 const GoogleTokenStrategy = require('passport-google-token').Strategy;
 const routes = require('./routes/index');
 const users = require('./users/users');
-
+const Promise = require("bluebird");
 const app = express();
 
 // view engine setup
@@ -23,7 +23,6 @@ app.engine('ejs', engine);
 app.set('view engine', 'ejs');
 
 // uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -55,19 +54,7 @@ passport.use(new GoogleTokenStrategy({
 ));
 
 passport.serializeUser(function (user, done) {
-	users.getUserById(config.mysql, user.id).then(res => {
-		if (!res) {
-			users.insertUser(config.mysql, user, false).then(success => {
-				if (success) {
-					done(null, user)
-				} else {
-					done(new Error("failed to add user"), null)
-				}
-			})
-		} else {
-			done(null, user)
-		}
-	})
+	done(null, user);
 })
 
 passport.deserializeUser(function (id, done) {
@@ -83,81 +70,96 @@ passport.deserializeUser(function (id, done) {
 app.use('/', routes);
 
 app.get('/login', passport.authenticate('google'));
-app.get('/api/marco', passport.authenticate("google-token"), function (req, res) {
+app.get('/api/marco', passport.authenticate("google-token"),  (req, res) => {
 	res.send("polo");
 });
-app.get('/api/patients', passport.authenticate("google-token"), function (req, res) {
-	users.getUserById(config.mysql, req.user.id).then(usr => {
-		const isTherapist = usr.isTherapist;
-		if (!isTherapist) {
-			res.status(401).json({
-				message: "User is not a therapist"
-			})
-		}else {
-			usr.getPatients().then(patients => res.json(patients))
-		} 
+
+app.post('/api/users/add', passport.authenticate("google-token"),  (req, res) => {
+	Promise.coroutine(function*(){
+		if (!req.body.userId) {
+			res.status(400).json({message: "No user id"});
+			return;
+		}
+		const success = yield users.insertUser(config.mysql, req.user, req.body.userId, false);
+		if (success) {
+			res.status(200).json({message: "done"});
+		} else {
+			res.status(500).json({message: "Failed to add user to database"});
+		}
+	})().catch(err => {
+		console.error(err);
+		res.status(500).json({message: "Server error"});
 	})
 });
 
-app.get('/api/sessions', passport.authenticate("google-token"), function (req, res) {
-	//if user id does not equal the requests patient id
-	if (req.user.id !== req.query.user_id) {
-		users.userIsPatientOf(config.mysql, req.query.user_id, req.user.id).then(isPatient => {
-			if (!isPatient) {
-				res.status(401).json({
-					message: "This user is not assigned to you"
-				})
-			} else {
-				users.getSessions(config.mysql, req.query.user_id).then(sessions => {
-					res.json(sessions)
-				})
-			}
-		})
-	} else {
-		users.getSessions(config.mysql, req.query.user_id).then(sessions => res.json(session))
-	}
-	//  check to be sure user is that patients therapist and if not return 401
-	//
-	//get the list of sessions
+app.get('/api/patients', passport.authenticate("google-token"), (req, res) => {
+	Promise.coroutine(function*(){
+		const user = yield users.getUserById(config.mysql, req.user.id);
+		if (!user) {
+			res.status(401).json({message: "User not found"})
+			return;
+		}
+		if (!user.isTherapist) {
+			res.status(401).json({message: "User not a therapist"})
+			return;
+		}
+		const patients = yield user.getPatients();
+		res.json(patients);
+		return;
+	})().catch(err => {
+		console.error(err);
+		res.status(500).json({message: "Server error"});
+	});
 });
 
-app.get('/api/sessions/data', passport.authenticate("google-token"), function (req, res) {
-	//if user id does not equal the requests patient id
-	if (req.user.id !== req.query.user_id) {
-		users.userIsPatientOf(config.mysql, req.query.user_id, req.user.id).then(isPatient => {
+app.get('/api/sessions', passport.authenticate("google-token"),  (req, res) => {
+	Promise.coroutine(function*(){
+		const user = yield users.getUserById(config.mysql, req.user.id);
+		if (!user) {
+			res.status(401).json({message: "User not found"})
+			return;
+		}
+		if (req.user.id !== req.query.user_id) {
+			const isPatient = yield users.userIsPatientOf(config.mysql, req.query.user_id, req.user.id)
 			if (!isPatient) {
-				res.status(401).json({
-					message: "This user is not assigned to you"
-				})
-			} else {
-				users.getSession(config.mysql, req.query.user_id, new Date(req.query.date)).then(session => {
-					if (session) {
-						session.data = JSON.parse(session.jsonData);
-						delete session.jsonData;
-						res.json(session)
-					} else {
-						res.status(401).json({
-							message: "No session found"
-						})
-					}
-				})
+				res.status(401).json({message: "This user is not assigned to you"})
+				return;
 			}
-		})
-	} else {
-		users.getSession(config.mysql, req.query.user_id, new Date(req.query.date)).then(session => {
-			if (session) {
-				req.json(session)
-			} else {
-				req.status(401).json({
-					message: "No session found"
-				})
-			}
-		})
-	}
-	//  check to be sure user is that patients therapist and if not return 401
-	//
-	//get the list of sessions
+			const sessions = yield users.getSessions(config.mysql, req.query.user_id);
+			res.json(sessions);
+		} else {
+			const sessions = yield users.getSessions(config.mysql, req.query.user_id);
+			res.json(session);
+		}
+		return;
+	})().catch(err => {
+		console.error(err);
+		res.status(500).json({message: "Server error"});
+	});
 });
+
+app.get('/api/sessions/data', passport.authenticate("google-token"),  (req, res) => {
+	Promise.coroutine(function*(){
+		if (req.user.id !== req.query.user_id) {
+			const isPatient = yield users.userIsPatientOf(config.mysql, req.query.user_id, req.user.id);
+			if (!isPatient) {
+				res.status(401).json({message: "This user is not assigned to you"});
+				return;
+			}
+		}
+		const session = yield users.getSession(config.mysql, req.query.user_id, new Date(req.query.date));
+		if (!session) {
+			res.status(404).json({message: "No session found"});
+			return;
+		}
+		res.json(session);
+	})().catch(err => {
+		console.error(err);
+		res.status(500).json({message: "Server error"});
+	});;
+});
+
+app.patch('api/users')
 
 app.get('/auth/google/callback', passport.authenticate('google', {
 	failureRedirect: "/login"
@@ -166,9 +168,6 @@ app.get('/auth/google/callback', passport.authenticate('google', {
 	console.log(res)
 	res.redirect('/');
 });
-
-
-
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
