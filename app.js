@@ -159,8 +159,6 @@ app.get('/api/sessions/data', passport.authenticate("google-token"),  (req, res)
 	});;
 });
 
-app.patch('api/users')
-
 app.get('/auth/google/callback', passport.authenticate('google', {
 	failureRedirect: "/login"
 }), function (req, res) {

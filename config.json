@@ -1,7 +1,9 @@
 {
     "google": {
-        "clientId": null,
-        "clientSecret": null
+        "client": {
+            "id": null,
+            "secret": null
+        }
     },
     "mysql": {
         "host": null,
