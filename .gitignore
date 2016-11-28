@@ -38,7 +38,6 @@ jspm_packages
 
 #my in folder shell scripts
 mysql
-schema.sql
 startDatabase.sh
 exampleDGISession.json
 
