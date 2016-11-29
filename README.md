@@ -7,12 +7,91 @@ This repository contains the backend server code for the Vanderbilt-Mobility-App
 ### Google oauth
 You will need to use the google developer console generate a client ID, and client secret for this web-service to use.
 
+The access tokens will need `openid profile` level access.
+
 ### Mysql
 The app requires a mysql database in order to run. To run a server locally, you can either install it on the host machine or use docker.
 
 >Using Docker: Create a directory "mysql" to hold the database files. Then run the command `docker run --name mobility-app-mysql -p 127.0.0.1:3306:3306 -v <path to mysql directory>:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=<your-password> -d mysql:8`. Now connect to it via msql workbench
 
 >Installing locally: Install mysql, and then connect to it from mysql workbench.
+
+Once you have connected to the database, run schema.sql to create all the tables needed for the API.
+
+#### Adding test data
+
+>Note: values to replace are shown in <>
+
+Start the API and use the `/api/users/add` endpoint to add two users.
+
+Choose one to become the therapist and update the database using a SQL statement like
+
+```UPDATE users SET isTherapist=1 WHERE id=<google-open-id-of-therapist>;```
+
+Then make the other user a patient of the therapist by running a SQL statement like 
+
+```INSERT INTO TherapistPatientLink (patient, therapist) VALUES (<open-id-of-patient>, <openid-of-therapist>);```
+
+Finally add a session for the patient by running a command like:
+
+```
+INSERT INTO SessionData (patient, type, jsonData, acquisitionDate, metadata) VALUES (<open-id-of-patient>, "DGI", <json-string-for-DGI>, CURDATE(), "M11")
+```
+
+> for the json value you can use a small snippet for testing the api such as
+> ```
+>[{
+>    \"TS\": \"11:53:12:956\",
+>    \"HAx\": -0.112253,
+>    \"HAy\": -0.2063109,
+>    \"HAz\": 0.9845038,
+>    \"Gx\": -4.273233,
+>    \"Gy\": 7.334367,
+>    \"Gz\": -0.2253242,
+>    \"f0\": 139.5667,
+>    \"f1\": 15.66947,
+>    \"f2\": 250.9928,
+>    \"f3\": 1080.784,
+>    \"f4\": 201.43,
+>    \"f5\": 0,
+>    \"roll\": -10.81105,
+>    \"pitch\": -5.48577
+>}, {
+>    \"TS\": \"11:53:12:988\",
+>    \"HAx\": -0.119751,
+>    \"HAy\": -0.2353719,
+>    \"HAz\": 0.9761833,
+>    \"Gx\": -4.067383,
+>    \"Gy\": 7.506714,
+>    \"Gz\": -0.194397,
+>    \"f0\": 139.5164,
+>    \"f1\": 15.66941,
+>    \"f2\": 250.9776,
+>    \"f3\": 1080.734,
+>    \"f4\": 201.42,
+>    \"f5\": 0,
+>   \"roll\": -12.40567,
+>    \"pitch\": -5.75157
+>}, {
+>    \"TS\": \"11:53:13:19\",
+>    \"HAx\": -0.1152344,
+>    \"HAy\": -0.2469482,
+>    \"HAz\": 0.9778314,
+>    \"Gx\": -3.379417,
+>    \"Gy\": 7.775379,
+>    \"Gz\": 0.3952708,
+>    \"f0\": 139.7165,
+>    \"f1\": 15.66841,
+>    \"f2\": 250.9288,
+>    \"f3\": 1080.154,
+>    \"f4\": 201.45,
+>    \"f5\": 0,
+>    \"roll\": -13.15085,
+>    \"pitch\": -5.498623
+>}]"
+>```
+> 
+>But for a testing the full app, you will most likely want to load a full example session into the database. To generate that json, take one of Josh's example CSVs and run it through an online json converter. I found a CSV to json converter fairly easily on google. Copy the resulting json and past it into a file. Then run find and replace for the " character to replace it with the escaped double quote \". Now you have a the contents of the json string for the insert statement.
 
 ### Configuration
 You will then need to set the configuration settings for the service. 
