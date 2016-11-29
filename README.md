@@ -268,7 +268,7 @@ I also recommend using Postman to test the endpoints. This provides a GUI for ge
 
 I used eslint to help enforce coding style when I was writing this. I would also recommend you use this as well. 
 
-I also recommend using visual studio code for development. It has an integrated node debugger, and allows you to set environment variables easily. Here is an example launch.json for vscode. It also has an extension that highlights eslint errors.
+I also recommend using visual studio code for development. It has an integrated node debugger, and allows you to set environment variables easily. It also has an extension that highlights eslint errors. Here is an example launch.json for vscode.
 
 ```
 {
